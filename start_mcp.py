@@ -1,5 +1,4 @@
-import threading
-import asyncio
+import threading, asyncio, traceback, sys
 from main import client, mcp
 
 
@@ -14,4 +13,8 @@ def _start_telegram():
 
 if __name__ == "__main__":
     threading.Thread(target=_start_telegram, name="tg-loop", daemon=True).start()
-    mcp.run()
+    try:
+        mcp.run()              # blocks
+    except Exception:          # <-- catch whatever kills the app
+        traceback.print_exc()  #   print full stack trace
+        sys.exit(1)
