@@ -14,11 +14,12 @@ def _start_telegram():
 if __name__ == "__main__":
     threading.Thread(target=_start_telegram, name="tg-loop", daemon=True).start()
 
+    # Tell FastMCP which interface/port to bind
+    os.environ["FASTMCP_HOST"] = "0.0.0.0"
+    os.environ["FASTMCP_PORT"] = os.environ["PORT"]  # Render-assigned port
+
     try:
-        mcp.run(
-            transport="http",
-            channel=f"0.0.0.0:{os.environ['PORT']}",   # Render-assigned port
-        )
+        mcp.run(transport="http")  # only kwarg this version supports
     except Exception:
         traceback.print_exc()
         sys.exit(1)
