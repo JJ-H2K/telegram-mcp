@@ -4,7 +4,10 @@ from main import client, mcp
 
 async def _telegram_runner():
     await client.start()
+    me = await client.get_me()
+    print(f"[TG] Signed in as {me.username or me.first_name} ({me.id})")
     await client.run_until_disconnected()
+
 
 
 def _start_telegram():
