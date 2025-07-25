@@ -15,10 +15,9 @@ if __name__ == "__main__":
     threading.Thread(target=_start_telegram, name="tg-loop", daemon=True).start()
 
     try:
-        # Only pass the kwargs FastMCP actually supports
         mcp.run(
             transport="http",
-            port=int(os.environ["PORT"]),
+            channel=f"0.0.0.0:{os.environ['PORT']}",   # Render-assigned port
         )
     except Exception:
         traceback.print_exc()
