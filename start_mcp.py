@@ -15,8 +15,11 @@ if __name__ == "__main__":
     threading.Thread(target=_start_telegram, name="tg-loop", daemon=True).start()
 
     try:
+        # FastMCP exposes the ASGI app here
+        app = mcp.streamable_http_app()
+
         uvicorn.run(
-            mcp.app,                 # the FastAPI app
+            app,
             host="0.0.0.0",
             port=int(os.environ["PORT"]),
             log_level="info",
