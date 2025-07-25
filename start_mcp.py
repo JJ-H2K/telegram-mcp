@@ -1,10 +1,9 @@
-import asyncio
 import os
-
+import asyncio
 from main import client, mcp
 
-async def main():
+async def start():
     await client.start()
-    await mcp.run()
+    mcp.run()
 
-asyncio.run(main())
+asyncio.run(start())
