@@ -280,9 +280,7 @@ async def route_to_n8n_workflow(workflow_type: str, message_data: dict):
         print(f"[ROUTE] Sending to {workflow_type} workflow")
         print(f"[PAYLOAD] {json.dumps(payload, indent=2)}")
         
-        # For now, just log the webhook call (replace with actual HTTP call when ready)
-        # TODO: Uncomment when n8n webhooks are configured
-        """
+        # Make actual HTTP call to n8n webhook
         timeout = aiohttp.ClientTimeout(total=10)  # 10 second timeout
         async with aiohttp.ClientSession(timeout=timeout) as session:
             async with session.post(webhook_url, json=payload) as response:
@@ -293,10 +291,6 @@ async def route_to_n8n_workflow(workflow_type: str, message_data: dict):
                 else:
                     print(f"[ERROR] n8n webhook failed: {response.status}")
                     return False
-        """
-        
-        # Simulated success for now
-        return True
         
     except asyncio.TimeoutError:
         print(f"[ERROR] Timeout calling n8n webhook for {workflow_type}")
