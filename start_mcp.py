@@ -3,9 +3,6 @@ import json, aiohttp
 from datetime import datetime
 from main import client, mcp, send_message
 from telethon import events
-from fastapi import HTTPException
-from fastapi.responses import JSONResponse
-from pydantic import BaseModel
 
 # ===============================================================================
 # INTELLIGENT FILTERING SYSTEM - INFRASTRUCTURE
@@ -770,11 +767,6 @@ async def intelligent_message_router(event):
 # REST API ENDPOINTS FOR N8N INTEGRATION
 # ===============================================================================
 
-class SendMessageRequest(BaseModel):
-    """Request model for sending Telegram messages via REST API"""
-    chat_id: int
-    message: str
-
 if __name__ == "__main__":
     threading.Thread(target=_start_telegram, name="tg-loop", daemon=True).start()
 
@@ -784,7 +776,7 @@ if __name__ == "__main__":
         
         # Add REST endpoint for n8n integration (non-destructive to MCP protocol)
         @app.post("/send_telegram_message")
-        async def send_telegram_message_rest(request: SendMessageRequest):
+        async def send_telegram_message_rest(request_data: dict):
             """
             Simple REST endpoint for n8n to send Telegram messages.
             This bypasses MCP protocol for easier integration.
@@ -793,23 +785,36 @@ if __name__ == "__main__":
             Body: {"chat_id": 123456, "message": "Hello from SATYA!"}
             """
             try:
-                print(f"[REST] Sending message to chat {request.chat_id}: {request.message}")
+                # Extract data from request
+                chat_id = request_data.get("chat_id")
+                message = request_data.get("message")
+                
+                if not chat_id or not message:
+                    return {
+                        "success": False, 
+                        "error": "Missing required fields: chat_id and message"
+                    }, 400
+                
+                print(f"[REST] Sending message to chat {chat_id}: {message}")
                 
                 # Call the MCP tool directly
-                result = await send_message(request.chat_id, request.message)
+                result = await send_message(chat_id, message)
                 
                 print(f"[REST] Message sent successfully: {result}")
                 return {
                     "success": True, 
                     "result": result,
-                    "chat_id": request.chat_id,
-                    "message": request.message
+                    "chat_id": chat_id,
+                    "message": message
                 }
                 
             except Exception as e:
                 error_msg = f"Failed to send message: {str(e)}"
                 print(f"[REST ERROR] {error_msg}")
-                raise HTTPException(status_code=500, detail=error_msg)
+                return {
+                    "success": False,
+                    "error": error_msg
+                }, 500
         
         # Health check endpoint
         @app.get("/health")
