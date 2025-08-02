@@ -679,13 +679,17 @@ async def emergency_reset_workflows() -> str:
 # ===============================================================================
 
 
+# Global variable to store the telegram event loop
+telegram_loop = None
+
 async def _telegram_runner():
+    global telegram_loop
+    telegram_loop = asyncio.get_event_loop()
+    
     await client.start()
     me = await client.get_me()
     print(f"[TG] Signed in as {me.username or me.first_name} ({me.id})")
     await client.run_until_disconnected()
-
-
 
 def _start_telegram():
     asyncio.run(_telegram_runner())
@@ -794,8 +798,15 @@ async def send_telegram_message_rest(request):
         
         print(f"[REST] Sending message to chat {chat_id}: {message}")
         
-        # Call the MCP tool directly
-        result = await send_message(chat_id, message)
+        # Call the MCP tool in the correct event loop
+        if telegram_loop is None:
+            result = "Error: Telegram client not ready"
+        else:
+            future = asyncio.run_coroutine_threadsafe(
+                send_message(chat_id, message), 
+                telegram_loop
+            )
+            result = future.result(timeout=30)  # 30 second timeout
         
         print(f"[REST] Message sent successfully: {result}")
         
