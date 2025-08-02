@@ -1,8 +1,11 @@
 import os, threading, asyncio, traceback, sys, uvicorn
 import json, aiohttp
 from datetime import datetime
-from main import client, mcp
+from main import client, mcp, send_message
 from telethon import events
+from fastapi import HTTPException
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 
 # ===============================================================================
 # INTELLIGENT FILTERING SYSTEM - INFRASTRUCTURE
@@ -763,12 +766,56 @@ async def intelligent_message_router(event):
             print(f"[FATAL-LOG] Original message: {event.raw_text!r} from {event.sender_id}")
 
 
+# ===============================================================================
+# REST API ENDPOINTS FOR N8N INTEGRATION
+# ===============================================================================
+
+class SendMessageRequest(BaseModel):
+    """Request model for sending Telegram messages via REST API"""
+    chat_id: int
+    message: str
+
 if __name__ == "__main__":
     threading.Thread(target=_start_telegram, name="tg-loop", daemon=True).start()
 
     try:
         # FastMCP exposes the ASGI app here
         app = mcp.streamable_http_app()
+        
+        # Add REST endpoint for n8n integration (non-destructive to MCP protocol)
+        @app.post("/send_telegram_message")
+        async def send_telegram_message_rest(request: SendMessageRequest):
+            """
+            Simple REST endpoint for n8n to send Telegram messages.
+            This bypasses MCP protocol for easier integration.
+            
+            POST /send_telegram_message
+            Body: {"chat_id": 123456, "message": "Hello from SATYA!"}
+            """
+            try:
+                print(f"[REST] Sending message to chat {request.chat_id}: {request.message}")
+                
+                # Call the MCP tool directly
+                result = await send_message(request.chat_id, request.message)
+                
+                print(f"[REST] Message sent successfully: {result}")
+                return {
+                    "success": True, 
+                    "result": result,
+                    "chat_id": request.chat_id,
+                    "message": request.message
+                }
+                
+            except Exception as e:
+                error_msg = f"Failed to send message: {str(e)}"
+                print(f"[REST ERROR] {error_msg}")
+                raise HTTPException(status_code=500, detail=error_msg)
+        
+        # Health check endpoint
+        @app.get("/health")
+        async def health_check():
+            """Health check endpoint for monitoring"""
+            return {"status": "healthy", "service": "satya-telegram-mcp"}
 
         uvicorn.run(
             app,
