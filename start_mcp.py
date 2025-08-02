@@ -2,6 +2,7 @@ import os, threading, asyncio, traceback, sys, uvicorn
 import json, aiohttp
 from datetime import datetime
 from main import client, mcp
+from telethon import events
 
 # ===============================================================================
 # INTELLIGENT FILTERING SYSTEM - INFRASTRUCTURE
@@ -694,8 +695,6 @@ async def _telegram_runner():
 
 def _start_telegram():
     asyncio.run(_telegram_runner())
-
-from telethon import events
 
 @client.on(events.NewMessage)
 async def intelligent_message_router(event):
