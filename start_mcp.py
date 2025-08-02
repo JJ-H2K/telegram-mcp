@@ -764,8 +764,65 @@ async def intelligent_message_router(event):
 
 
 # ===============================================================================
-# REST API ENDPOINTS FOR N8N INTEGRATION
+# REST API ENDPOINTS FOR N8N INTEGRATION  
 # ===============================================================================
+
+# Add REST endpoint using FastMCP's custom route system
+@mcp.custom_route("/send_telegram_message", methods=["POST"])
+async def send_telegram_message_rest(request):
+    """
+    Simple REST endpoint for n8n to send Telegram messages.
+    This bypasses MCP protocol for easier integration.
+    
+    POST /send_telegram_message
+    Body: {"chat_id": 123456, "message": "Hello from SATYA!"}
+    """
+    try:
+        # Parse JSON from request body
+        request_data = await request.json()
+        
+        # Extract data from request
+        chat_id = request_data.get("chat_id")
+        message = request_data.get("message")
+        
+        if not chat_id or not message:
+            from starlette.responses import JSONResponse
+            return JSONResponse({
+                "success": False, 
+                "error": "Missing required fields: chat_id and message"
+            }, status_code=400)
+        
+        print(f"[REST] Sending message to chat {chat_id}: {message}")
+        
+        # Call the MCP tool directly
+        result = await send_message(chat_id, message)
+        
+        print(f"[REST] Message sent successfully: {result}")
+        
+        from starlette.responses import JSONResponse
+        return JSONResponse({
+            "success": True, 
+            "result": result,
+            "chat_id": chat_id,
+            "message": message
+        })
+        
+    except Exception as e:
+        error_msg = f"Failed to send message: {str(e)}"
+        print(f"[REST ERROR] {error_msg}")
+        
+        from starlette.responses import JSONResponse
+        return JSONResponse({
+            "success": False,
+            "error": error_msg
+        }, status_code=500)
+
+# Health check endpoint
+@mcp.custom_route("/health", methods=["GET"])
+async def health_check(request):
+    """Health check endpoint for monitoring"""
+    from starlette.responses import JSONResponse
+    return JSONResponse({"status": "healthy", "service": "satya-telegram-mcp"})
 
 if __name__ == "__main__":
     threading.Thread(target=_start_telegram, name="tg-loop", daemon=True).start()
@@ -773,54 +830,6 @@ if __name__ == "__main__":
     try:
         # FastMCP exposes the ASGI app here
         app = mcp.streamable_http_app()
-        
-        # Add REST endpoint for n8n integration (non-destructive to MCP protocol)
-        @app.post("/send_telegram_message")
-        async def send_telegram_message_rest(request_data: dict):
-            """
-            Simple REST endpoint for n8n to send Telegram messages.
-            This bypasses MCP protocol for easier integration.
-            
-            POST /send_telegram_message
-            Body: {"chat_id": 123456, "message": "Hello from SATYA!"}
-            """
-            try:
-                # Extract data from request
-                chat_id = request_data.get("chat_id")
-                message = request_data.get("message")
-                
-                if not chat_id or not message:
-                    return {
-                        "success": False, 
-                        "error": "Missing required fields: chat_id and message"
-                    }, 400
-                
-                print(f"[REST] Sending message to chat {chat_id}: {message}")
-                
-                # Call the MCP tool directly
-                result = await send_message(chat_id, message)
-                
-                print(f"[REST] Message sent successfully: {result}")
-                return {
-                    "success": True, 
-                    "result": result,
-                    "chat_id": chat_id,
-                    "message": message
-                }
-                
-            except Exception as e:
-                error_msg = f"Failed to send message: {str(e)}"
-                print(f"[REST ERROR] {error_msg}")
-                return {
-                    "success": False,
-                    "error": error_msg
-                }, 500
-        
-        # Health check endpoint
-        @app.get("/health")
-        async def health_check():
-            """Health check endpoint for monitoring"""
-            return {"status": "healthy", "service": "satya-telegram-mcp"}
 
         uvicorn.run(
             app,
